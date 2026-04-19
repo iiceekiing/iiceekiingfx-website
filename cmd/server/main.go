@@ -9,6 +9,7 @@ import (
 	"iiceekiingfx.com/internal/middleware"
 	"iiceekiingfx.com/internal/repositories"
 	"iiceekiingfx.com/internal/services"
+	"iiceekiingfx.com/pkg/crypto"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -43,10 +44,15 @@ func main() {
 	dashboardService := services.NewDashboardService(portfolioRepo, journalRepo)
 	journalService := services.NewJournalService(journalRepo)
 
+	// Initialize encryption service
+	encryptionSvc := crypto.NewEncryptionService(cfg.JWTSecret)
+	portfolioService := services.NewPortfolioService(portfolioRepo, encryptionSvc)
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	dashboardHandler := handlers.NewDashboardHandler(dashboardService)
 	journalHandler := handlers.NewJournalHandler(journalService)
+	portfolioHandler := handlers.NewPortfolioHandler(portfolioService)
 
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
@@ -116,21 +122,13 @@ func main() {
 
 	// Portfolio routes
 	portfolio := protected.Group("/portfolio")
-	portfolio.Post("/connect", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Connect MT5 account endpoint",
-		})
-	})
-	portfolio.Get("/accounts", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Get trading accounts endpoint",
-		})
-	})
-	portfolio.Get("/history", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Get trading history endpoint",
-		})
-	})
+	portfolio.Post("/connect", portfolioHandler.ConnectAccount)
+	portfolio.Get("/accounts", portfolioHandler.GetAccounts)
+	portfolio.Get("/accounts/:id", portfolioHandler.GetAccountDetails)
+	portfolio.Put("/accounts/:id/status", portfolioHandler.UpdateAccountStatus)
+	portfolio.Post("/accounts/:id/sync", portfolioHandler.SyncAccount)
+	portfolio.Get("/accounts/:id/performance", portfolioHandler.GetAccountPerformance)
+	portfolio.Get("/history", portfolioHandler.GetTradingHistory)
 
 	// Journal routes
 	journal := protected.Group("/journal")
