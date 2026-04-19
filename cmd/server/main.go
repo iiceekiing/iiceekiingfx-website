@@ -35,12 +35,18 @@ func main() {
 
 	// Initialize repositories
 	userRepo := repositories.NewUserRepository(db)
+	portfolioRepo := repositories.NewPortfolioRepository(db)
+	journalRepo := repositories.NewJournalRepository(db)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
+	dashboardService := services.NewDashboardService(portfolioRepo, journalRepo)
+	journalService := services.NewJournalService(journalRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
+	dashboardHandler := handlers.NewDashboardHandler(dashboardService)
+	journalHandler := handlers.NewJournalHandler(journalService)
 
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
@@ -104,21 +110,9 @@ func main() {
 
 	// Dashboard routes
 	dashboard := protected.Group("/dashboard")
-	dashboard.Get("/overview", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Dashboard overview endpoint",
-		})
-	})
-	dashboard.Get("/equity-curve", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Equity curve endpoint",
-		})
-	})
-	dashboard.Get("/activity", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Activity feed endpoint",
-		})
-	})
+	dashboard.Get("/overview", dashboardHandler.GetOverview)
+	dashboard.Get("/equity-curve", dashboardHandler.GetEquityCurve)
+	dashboard.Get("/activity", dashboardHandler.GetActivity)
 
 	// Portfolio routes
 	portfolio := protected.Group("/portfolio")
@@ -140,26 +134,10 @@ func main() {
 
 	// Journal routes
 	journal := protected.Group("/journal")
-	journal.Get("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Get journal entries endpoint",
-		})
-	})
-	journal.Post("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Create journal entry endpoint",
-		})
-	})
-	journal.Put("/:id", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Update journal entry endpoint",
-		})
-	})
-	journal.Delete("/:id", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Delete journal entry endpoint",
-		})
-	})
+	journal.Get("/", journalHandler.GetJournalEntries)
+	journal.Post("/", journalHandler.CreateJournalEntry)
+	journal.Put("/:id", journalHandler.UpdateJournalEntry)
+	journal.Delete("/:id", journalHandler.DeleteJournalEntry)
 
 	// Courses routes
 	courses := protected.Group("/courses")
