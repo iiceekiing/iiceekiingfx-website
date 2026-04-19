@@ -38,11 +38,15 @@ func main() {
 	userRepo := repositories.NewUserRepository(db)
 	portfolioRepo := repositories.NewPortfolioRepository(db)
 	journalRepo := repositories.NewJournalRepository(db)
+	courseRepo := repositories.NewCourseRepository(db)
+	signalsRepo := repositories.NewSignalsRepository(db)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	dashboardService := services.NewDashboardService(portfolioRepo, journalRepo)
 	journalService := services.NewJournalService(journalRepo)
+	courseService := services.NewCourseService(courseRepo)
+	signalsService := services.NewSignalsService(signalsRepo)
 
 	// Initialize encryption service
 	encryptionSvc := crypto.NewEncryptionService(cfg.JWTSecret)
@@ -53,6 +57,8 @@ func main() {
 	dashboardHandler := handlers.NewDashboardHandler(dashboardService)
 	journalHandler := handlers.NewJournalHandler(journalService)
 	portfolioHandler := handlers.NewPortfolioHandler(portfolioService)
+	courseHandler := handlers.NewCourseHandler(courseService)
+	signalsHandler := handlers.NewSignalsHandler(signalsService)
 
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
@@ -139,24 +145,30 @@ func main() {
 
 	// Courses routes
 	courses := protected.Group("/courses")
-	courses.Get("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Get courses endpoint",
-		})
-	})
-	courses.Get("/:id", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Get course details endpoint",
-		})
-	})
+	courses.Get("/", courseHandler.GetAllCourses)
+	courses.Get("/:id", courseHandler.GetCourseByID)
+	courses.Get("/:id/lessons", courseHandler.GetCourseLessons)
+	courses.Get("/:id/lessons/:lessonId", courseHandler.GetLessonByID)
+	courses.Post("/:id/enroll", courseHandler.EnrollCourse)
+	courses.Get("/:id/progress", courseHandler.GetUserProgress)
+	courses.Put("/:id/progress", courseHandler.UpdateProgress)
+	courses.Get("/my", courseHandler.GetUserCourses)
+
+	// Admin course routes
+	courses.Post("/", courseHandler.CreateCourse)
+	courses.Post("/:id/lessons", courseHandler.CreateLesson)
 
 	// Signals routes
 	signals := protected.Group("/signals")
-	signals.Get("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Get signals endpoint",
-		})
-	})
+	signals.Get("/", signalsHandler.GetAllSignals)
+	signals.Get("/:id", signalsHandler.GetSignalByID)
+	signals.Get("/pair/:pair", signalsHandler.GetSignalsByPair)
+
+	// Admin signals routes
+	signals.Post("/", signalsHandler.CreateSignal)
+	signals.Put("/:id", signalsHandler.UpdateSignal)
+	signals.Delete("/:id", signalsHandler.DeleteSignal)
+	signals.Put("/:id/close", signalsHandler.CloseSignal)
 
 	// Start server
 	port := ":" + cfg.ServerPort
