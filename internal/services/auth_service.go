@@ -8,11 +8,12 @@ import (
 	"iiceekiingfx.com/internal/repositories"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	userRepo *repositories.UserRepository
+	userRepo  *repositories.UserRepository
 	jwtSecret string
 }
 
@@ -41,6 +42,7 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.AuthRespons
 
 	// Create user
 	user := &models.User{
+		ID:        uuid.New(),
 		Email:     req.Email,
 		Password:  string(hashedPassword),
 		FirstName: req.FirstName,
