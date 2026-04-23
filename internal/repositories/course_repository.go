@@ -84,34 +84,16 @@ func (r *CourseRepository) GetCourseByID(id string) (*models.Course, error) {
 	`
 
 	course := &models.Course{}
-	var idStr string
-	var imageURL sql.NullString
 	err := r.db.DB.QueryRow(query, id).Scan(
-		&idStr, &course.Title, &course.Description, &course.Price,
-		&imageURL, &course.IsActive, &course.CreatedAt, &course.UpdatedAt,
+		&course.ID, &course.Title, &course.Description, &course.Price,
+		&course.ImageURL, &course.IsActive, &course.CreatedAt, &course.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
 
-	// Parse UUID from string
-	course.ID, err = uuid.Parse(idStr)
-	if err != nil {
-		return nil, err
-	}
-
-	// Handle nullable image_url
-	if imageURL.Valid {
-		course.ImageURL = imageURL.String
-	} else {
-		course.ImageURL = ""
-	}
-
-	return course, nil
+	return course, err
 }
 
 func (r *CourseRepository) CreateLesson(lesson *models.Lesson) error {
